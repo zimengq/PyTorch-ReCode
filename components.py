@@ -8,6 +8,8 @@ import torch.nn.functional as F
 import numpy as np
 import config
 
+import pdb
+
 
 class PointerNet(nn.Module):
     def __init__(self):
@@ -137,7 +139,7 @@ class CondAttLSTM(nn.Module):
         x_out = torch.add(torch.matmul(X, self.w_out), self.b_out)
 
         # (batch_size, context_size, att_layer1_dim)
-        context_att_tmp = torch.add(torch.matmul(context, self.w_context_att), self.context_att_b)
+        context_att_tmp = torch.matmul(context, self.w_context_att) + self.context_att_b
 
         # before for loop
         # swap parent_t_seq dimensions
@@ -164,8 +166,8 @@ class CondAttLSTM(nn.Module):
             # (batch_size, context_size, att_layer1_dim)
             att_hidden = self.tanh(torch.add(context_att_tmp, h_tm1_att_trans[:, None, :]))
             # (batch_size, context_size, 1)
-            att_raw = torch.add(torch.matmul(att_hidden, self.w_att), self.b_att)
-            att_raw = att_raw.reshape((att_raw.shape[0], att_raw.shape[1]))
+            att_raw = (torch.matmul(att_hidden, self.w_att) + self.b_att).squeeze(1)
+            att_raw = att_raw.reshape(att_raw.shape[0], att_raw.shape[1])
 
             # (batch_size, context_size)
             ctx_att = torch.exp(att_raw - torch.max(att_raw, dim=-1, keepdim=True)[0])
@@ -181,8 +183,7 @@ class CondAttLSTM(nn.Module):
             if t == 0:
                 par_h = torch.FloatTensor(np.zeros(init_state.shape))
             else:
-                # par_h = hist_h[torch.arange(hist_h.shape[0]), parent_t, :]
-                par_h = torch.FloatTensor(np.zeros(init_state.shape))
+                par_h = hist_h[torch.arange(hist_h.shape[0]), parent_t, :]
 
             # conditioned lstm
             i_t = self.sigmoid(
@@ -224,7 +225,7 @@ class CondAttLSTM(nn.Module):
                 flag = True
 
         # back to batch seq and size
-        return outputs.permute(1, 0, 2), cells.permute(1, 0, 2), ctx_vectors.permute(1, 0, 2)
+        return outputs.squeeze(2).permute(1, 0, 2), cells.squeeze(2).permute(1, 0, 2), ctx_vectors.squeeze(2).permute(1, 0, 2)
 
 
 class Hyp(object):

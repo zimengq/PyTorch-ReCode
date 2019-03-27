@@ -179,7 +179,7 @@ class Seq2Seq(nn.Module):
         vocab_prob = F.softmax(torch.matmul(decoder_next_state_trans_token, torch.t(
             self.vocab_embedding_W)) + self.vocab_embedding_b)
 
-        ptr_net_decoder_state = torch.cat([decoder_next_state, self.decoder.ctx_vectors], dim=-1)
+        ptr_net_decoder_state = torch.cat([decoder_next_state.unsqueeze(1), self.decoder.ctx_vectors], dim=-1)
 
         copy_prob = self.src_ptr_net(query_embed, query_token_embed_mask, ptr_net_decoder_state)
 
@@ -235,7 +235,7 @@ class Seq2Seq(nn.Module):
 
             if t > 0:
                 for i, hyp in enumerate(hyp_samples):
-                    hist_h[i, :len(hyp.hist_h), :] = hyp.hist_h
+                    hist_h[i, :len(hyp.hist_h), :] = torch.stack(hyp.hist_h)
                     # for j, h in enumerate(hyp.hist_h):
                     #    hist_h[i, j] = h
 
@@ -339,13 +339,12 @@ class Seq2Seq(nn.Module):
             rule_apply_cand_num = len(rule_apply_cand_scores)
 
             if word_gen_hyp_num > 0:
-                word_gen_cand_scores = hyp_scores[word_gen_hyp_ids,
-                                                  None] + word_prob[word_gen_hyp_ids, :]
+                word_gen_cand_scores = hyp_scores[word_gen_hyp_ids, None] + word_prob[word_gen_hyp_ids, :]
                 word_gen_cand_scores_flat = word_gen_cand_scores.flatten()
 
-                cand_scores = np.concatenate([rule_apply_cand_scores, word_gen_cand_scores_flat])
+                cand_scores = torch.cat((torch.tensor(rule_apply_cand_scores), word_gen_cand_scores_flat))
             else:
-                cand_scores = np.array(rule_apply_cand_scores)
+                cand_scores = torch.tensor(rule_apply_cand_scores)
 
             top_cand_ids = (-cand_scores).argsort()[:beam_size - completed_hyp_num]
 
@@ -370,6 +369,8 @@ class Seq2Seq(nn.Module):
                     new_hyp.action_embed = rule_embedding[rule_id]
                 else:
                     tid = (cand_id - rule_apply_cand_num) % word_prob.shape[1]
+                    if isinstance(tid, torch.Tensor):
+                        tid = tid.item()
                     word_gen_hyp_id = (cand_id - rule_apply_cand_num) / word_prob.shape[1]
                     hyp_id = word_gen_hyp_ids[word_gen_hyp_id]
 

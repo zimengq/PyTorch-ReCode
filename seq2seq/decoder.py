@@ -88,14 +88,14 @@ class LSTMDecoder(BaseDecoder):
                                                                                          train=False,
                                                                                          time_steps=time_steps)
 
-        decoder_next_state = decoder_next_state_dim3.flatten(2)
+        decoder_next_state = decoder_next_state_dim3.flatten(1)
         # decoder_output = decoder_next_state * (1 - DECODER_DROPOUT)
 
         decoder_next_cell = decoder_next_cell_dim3.reshape(decoder_next_cell_dim3.shape[0], -1)
 
         decoder_next_state_trans_rule = self.hidden_state_W_rule(decoder_next_state)
         decoder_next_state_trans_token = self.hidden_state_W_token(
-            torch.cat([decoder_next_state, self.ctx_vectors.flatten(2)], dim=-1))
+            torch.cat([decoder_next_state, self.ctx_vectors.flatten(1)], dim=-1))
 
         return decoder_next_state, decoder_next_cell, decoder_next_state_trans_rule, decoder_next_state_trans_token
 
