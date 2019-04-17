@@ -22,7 +22,7 @@
 }
 ```
 
-## How to Run
+## Usage
 
 Train a model from the beginning
 
