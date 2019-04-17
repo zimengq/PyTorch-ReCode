@@ -1,14 +1,12 @@
 # ReCode
 ## Implementation of [Retrieval-Based Neural Code Generation](http://aclweb.org/anthology/D18-1111)
 
-Modified from Original Theano code [Yin](https://github.com/pcyin/NL2code) and [Shirley](https://github.com/sweetpeach/ReCode)
+Modified from original Theano code [Yin](https://github.com/pcyin/NL2code) and [Shirley](https://github.com/sweetpeach/ReCode)
 
 Note: current version is runnable on Django dataset, but could not fully reproduce the results of above paper.
 
 ## BibTex
 ```
-# coding=utf-8
-
 @InProceedings{D18-1111,
   author = 	"Hayati, Shirley Anugrah
 		and Olivier, Raphael
@@ -23,6 +21,18 @@ Note: current version is runnable on Django dataset, but could not fully reprodu
   pages = 	"925--930",
   location = 	"Brussels, Belgium",
   url = 	"http://aclweb.org/anthology/D18-1111"
+}
+```
+
+```
+@inproceedings{yin17acl,
+    title = {A Syntactic Neural Model for General-Purpose Code Generation},
+    author = {Pengcheng Yin and Graham Neubig},
+    booktitle = {The 55th Annual Meeting of the Association for Computational Linguistics (ACL)},
+    address = {Vancouver, Canada},
+    month = {July},
+    url = {https://arxiv.org/abs/1704.01696},
+    year = {2017}
 }
 ```
 
