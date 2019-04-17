@@ -1,6 +1,8 @@
 # ReCode
 ## Implementation of [Retrieval-Based Neural Code Generation](http://aclweb.org/anthology/D18-1111)
 
+Note: current version is runnable on Django dataset, but could not fully reproduce the results of above paper.
+
 ## BibTex
 ```
 # coding=utf-8
