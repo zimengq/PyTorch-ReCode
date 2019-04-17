@@ -1,6 +1,7 @@
 # ReCode
 ## Implementation of [Retrieval-Based Neural Code Generation](http://aclweb.org/anthology/D18-1111)
 
+Modified from Original Theano code [Yin](https://github.com/pcyin/NL2code) and [Shirley](https://github.com/sweetpeach/ReCode)
 Note: current version is runnable on Django dataset, but could not fully reproduce the results of above paper.
 
 ## BibTex
