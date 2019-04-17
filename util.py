@@ -25,3 +25,18 @@ def parse_activation(activation):
         return nn.Tanh()
     if activation == 'sigmoid':
         return nn.Sigmoid()
+
+
+def trace_back(var_grad_fn):
+    print('Tracing back tensors:')
+    print(var_grad_fn)
+    for n in var_grad_fn.next_functions:
+        if n[0]:
+            try:
+                tensor = getattr(n[0], 'variable')
+                print(n[0])
+                print('Tensor with grad found:', tensor)
+                print(' - gradient:', tensor.grad)
+                print()
+            except AttributeError as e:
+                trace_back(n[0])

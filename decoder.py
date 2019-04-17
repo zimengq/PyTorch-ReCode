@@ -30,6 +30,9 @@ def decode_python_dataset(model, train_data=None, dev_data=None, test_data=None,
             else:
                 cand_list = model.decode(example, dataset.grammar, dataset.terminal_vocab,
                                      beam_size=config.beam_size, max_time_step=config.decode_max_time_step)
+                if cand_list == []:
+                    print("pass example!")
+                    continue
 
             exg_decode_results = []
             for cid, cand in enumerate(cand_list[:10]):

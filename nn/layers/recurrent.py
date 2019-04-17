@@ -64,11 +64,11 @@ class LSTM(nn.Module):
         return h_t, c_t
 
     def forward(self, X, mask=None, init_state=None, dropout=0, train=True, srng=None):
-        # switch mode
-        if train:
-            self.train()
-        else:
-            self.eval()
+        # # switch mode
+        # if train:
+        #     self.train()
+        # else:
+        #     self.eval()
 
         if mask is None:
             mask = torch.ones((X.shape[0], X.shape[1]))

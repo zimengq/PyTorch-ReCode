@@ -4,9 +4,6 @@ import logging
 from astnode import ASTNode
 from lang.util import typename
 
-import pdb
-
-
 class Grammar(object):
     def __init__(self, rules):
         """
@@ -68,26 +65,16 @@ class Grammar(object):
         from astnode import ASTNode
 
         if isinstance(node, ASTNode):
-            try:
-                type_repr = parse_typename(typename(node.type))
-                return self.node_type_to_id[type_repr]
-            except KeyError:
-                pdb.set_trace()
+            type_repr = typename(node.type)
+            return self.node_type_to_id[type_repr]
         else:
             # assert isinstance(node, str)
             # it is a type
-            try:
-                type_repr = parse_typename(typename(node))
-                return self.node_type_to_id[type_repr]
-            except KeyError:
-                pdb.set_trace()
+            type_repr = typename(node)
+            return self.node_type_to_id[type_repr]
 
     def is_terminal(self, node):
         return node.type in self.terminal_types
 
     def is_value_node(self, node):
         raise NotImplementedError
-
-
-def parse_typename(typename):
-    return typename.split()[-1].replace(">", "").replace("\'", "").split(".")[-1]

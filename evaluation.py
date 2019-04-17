@@ -12,6 +12,8 @@ from seq2seq.seq2seq import *
 from postprocess import process_class_names
 
 import astor
+import config
+import re
 
 DJANGO_ANNOT_FILE = '../../files/all.anno'
 
@@ -33,6 +35,7 @@ def evaluate(model, dataset, verbose=True):
 
     exact_match_ratio = 0.0
 
+    model.eval()
     for example in dataset.examples:
         logging.info('evaluating example [%d]' % example.eid)
         hyps, hyp_scores = model.decode(example, max_time_step=config.decode_max_time_step)

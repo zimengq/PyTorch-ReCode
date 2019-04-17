@@ -8,8 +8,6 @@ import torch.nn.functional as F
 import numpy as np
 import config
 
-import pdb
-
 
 class PointerNet(nn.Module):
     def __init__(self):
@@ -36,7 +34,7 @@ class PointerNet(nn.Module):
 
         scores = torch.exp(scores - torch.max(scores, dim=-1, keepdim=True)[0])
 
-        scores *= query_token_embed_mask.unsqueeze(1).float()
+        scores = torch.mul(scores, query_token_embed_mask.unsqueeze(1).float())
         scores = scores / torch.sum(scores, dim=-1, keepdim=True)
 
         return scores

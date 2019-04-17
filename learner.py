@@ -1,9 +1,9 @@
 from nn.utils.config_factory import config
 from nn.utils.generic_utils import *
 
-import logging
-import numpy as np
-import sys, os
+import torch
+import sys
+import os
 import time
 
 import decoder
@@ -11,7 +11,7 @@ import evaluation
 from dataset import *
 import config
 
-import pdb
+from util import trace_back
 
 
 def second2minute(time1, time2):
@@ -30,7 +30,7 @@ class Learner(object):
         if val_data:
             logging.info('validation set [%s] (%d examples)', val_data.name, val_data.count)
 
-    def train(self):
+    def train(self, optimizer):
         dataset = self.train_data
         nb_train_sample = dataset.count
         index_array = np.arange(nb_train_sample)
@@ -51,6 +51,8 @@ class Learner(object):
         # train_data_iter = DataIterator(self.train_data, batch_size)
         original_start = time.time()
         start_time = original_start
+
+        self.model.train()
         for epoch in range(nb_epoch):
             # train_data_iter.reset()
             # if shuffle:
@@ -65,7 +67,7 @@ class Learner(object):
             loss = 0.0
 
             for batch_index, (batch_start, batch_end) in enumerate(batches):
-            # for batch_index, (examples, batch_ids) in enumerate(train_data_iter):
+                optimizer.zero_grad()
                 cum_updates += 1
 
                 batch_ids = index_array[batch_start:batch_end]
@@ -88,8 +90,13 @@ class Learner(object):
 
                                 tgt_action_seq_type[i, t, 2] = 0
 
-                encode_outputs = self.model.encode(*inputs)
+                encode_outputs = self.model(*inputs)
                 batch_loss = encode_outputs.item()
+                # print("=" * 60)
+                # trace_back(encode_outputs.grad_fn)
+                # print("=" * 60)
+                encode_outputs.backward()
+                optimizer.step()
                 logging.debug('prob_func finished computing')
 
                 cum_nb_examples += cur_batch_size
@@ -103,8 +110,8 @@ class Learner(object):
                     print(', eta %ds' % eta)
                     sys.stdout.flush()
 
-                # if cum_updates % config.valid_per_batch == 0:
-                if cum_updates % 40 == 0:
+                if cum_updates % config.valid_per_batch == 0:
+                # if cum_updates % 40 == 0:
                     logging.info('begin validation')
 
                     if config.data_type == 'ifttt':
@@ -125,20 +132,20 @@ class Learner(object):
                         logging.info('accuracy: %f', accuracy)
 
                         if len(history_valid_acc) == 0 or accuracy > np.array(history_valid_acc).max():
-                            best_model_by_acc = self.model.pull_params()
+                            best_model_by_acc = self.model.state_dict()
                             # logging.info('current model has best accuracy')
                         history_valid_acc.append(accuracy)
 
                         if len(history_valid_bleu) == 0 or bleu > np.array(history_valid_bleu).max():
-                            best_model_by_bleu = self.model.pull_params()
+                            best_model_by_bleu = self.model.state_dict()
                             # logging.info('current model has best accuracy')
                         history_valid_bleu.append(bleu)
 
                     if len(history_valid_perf) == 0 or val_perf > np.array(history_valid_perf).max():
-                        best_model_params = self.model.pull_params()
+                        best_model = self.model.state_dict()
                         patience_counter = 0
                         logging.info('save current best model')
-                        self.model.save(os.path.join(config.output_dir, 'model.npz'))
+                        torch.save(self.model.state_dict(), os.path.join(config.output_dir, 'model.npz'))
                     else:
                         patience_counter += 1
                         logging.info('hitting patience_counter: %d', patience_counter)
@@ -149,7 +156,7 @@ class Learner(object):
                     history_valid_perf.append(val_perf)
 
                 if cum_updates % config.save_per_batch == 0:
-                    self.model.save(os.path.join(config.output_dir, 'model.iter%d' % cum_updates))
+                    torch.save(self.model.state_dict(), os.path.join(config.output_dir, 'model.iter%d' % cum_updates))
 
             logging.info('[Epoch %d] cumulative loss = %f, (took %ds, total %f min) ',
                          epoch,
@@ -161,7 +168,7 @@ class Learner(object):
                 break
 
         logging.info('training finished, save the best model')
-        np.savez(os.path.join(config.output_dir, 'model.npz'), **best_model_params)
+        # torch.save(best_model.state_dict(), os.path.join(config.output_dir, 'model.npz'))
 
         try:
             with open('valid_perf.txt', 'w') as fp:
@@ -191,13 +198,12 @@ class Learner(object):
             print "Fail to save result"
             pass
 
-
         if config.data_type == 'django' or config.data_type == 'hs':
             logging.info('save the best model by accuracy')
-            np.savez(os.path.join(config.output_dir, 'model.best_acc.npz'), **best_model_by_acc)
+            torch.save(best_model_by_acc, os.path.join(config.output_dir, 'model.best_acc.npz'))
 
             logging.info('save the best model by bleu')
-            np.savez(os.path.join(config.output_dir, 'model.best_bleu.npz'), **best_model_by_bleu)
+            torch.save(best_model_by_bleu, os.path.join(config.output_dir, 'model.best_bleu.npz'))
 
 
 class DataIterator:

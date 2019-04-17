@@ -2,7 +2,7 @@
 def typename(x):
     if isinstance(x, str):
         return x
-    return str(x)
+    return x.__name__
 
 def escape(text):
     text = text \

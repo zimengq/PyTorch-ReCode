@@ -6,7 +6,7 @@ import traceback
 import argparse
 import os
 import logging
-# from vprof import profiler
+import torch.optim as optim
 
 from seq2seq.seq2seq import Seq2Seq
 from seq2seq.encoder import LSTMEncoder
@@ -189,7 +189,9 @@ if __name__ == '__main__':
 
     if args.operation in ['train', 'decode', 'interactive', 'align']:
         if args.enable_retrieval:
-            model = RetrievalModel()
+            model = RetrievalModel(encoder, decoder, args.decoder_hidden_dim, args.rule_num, args.rule_embed_dim,
+                       args.node_num, args.node_embed_dim, args.target_vocab_size, args.max_query_length,
+                       args.head_nt_constraint, output_dim=2, dropout=0.2, frontier_node_type_feed=False, parent_action_feed=False)
         else:
             model = Seq2Seq(encoder, decoder, args.decoder_hidden_dim, args.rule_num, args.rule_embed_dim,
                             args.node_num, args.node_embed_dim, args.target_vocab_size, args.max_query_length,
@@ -197,7 +199,14 @@ if __name__ == '__main__':
         # model.build()
 
         if args.model:
-            model.load(args.model)
+            model.load_state_dict(torch.load(args.model))
+
+        if args.optimizer == 'adadelta':
+            optimizer = optim.Adadelta(model.parameters())
+        elif args.optimizer == 'adam':
+            optimizer = optim.Adam(model.parameters())
+        else:
+            optimizer = optim.Adam(model.parameters())
 
     if args.operation == 'align':
         aligned_train_data = compute_alignments(model, train_data)
@@ -207,8 +216,8 @@ if __name__ == '__main__':
         # train_data = train_data.get_dataset_by_ids(range(2000), 'train_sample')
         # dev_data = dev_data.get_dataset_by_ids(range(10), 'dev_sample')
         # TODO: subset of dev_data for debugging
-        learner = Learner(model, train_data, dev_data.get_dataset_by_ids(range(3), 'dev_data'))
-        learner.train()
+        learner = Learner(model, train_data.get_dataset_by_ids(range(500), 'train_data'), dev_data)
+        learner.train(optimizer)
 
     if args.operation == 'decode':
         # ==========================

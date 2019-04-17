@@ -26,12 +26,12 @@ class CondAttLSTMAligner(CondAttLSTM):
     def _attention_over_history(self, hist_h, h_tm1, scores):
         hist_h_mask = torch.ones(hist_h.size())
 
-        hist_h_att_trans = torch.mm(hist_h, self.hatt_hist_W1) + self.hatt_b1
-        h_tm1_hatt_trans = torch.mm(h_tm1, self.hatt_h_W1)
+        hist_h_att_trans = torch.matmul(hist_h, self.hatt_hist_W1) + self.hatt_b1
+        h_tm1_hatt_trans = torch.matmul(h_tm1, self.hatt_h_W1)
 
         hatt_hidden = hist_h_att_trans + h_tm1_hatt_trans[:, None, :]
         hatt_hidden = hatt_hidden.tanh()
-        hatt_raw = (torch.mm(hatt_hidden, self.hatt_W2) + self.hatt_b2).view(hist_h.size()[0], hist_h.size()[1])
+        hatt_raw = (torch.matmul(hatt_hidden, self.hatt_W2) + self.hatt_b2).view(hist_h.size()[0], hist_h.size()[1])
         hatt_exp = torch.exp(hatt_raw - torch.mul(torch.max(hatt_raw, dim=-1, keepdim=True)), hist_h_mask)
         h_att_weights = torch.div(hatt_exp, torch.sum(hatt_exp, dim=-1, keepdim=True) + 1e-7)
 
@@ -51,12 +51,12 @@ class CondAttLSTMAligner(CondAttLSTM):
                     b_u):
 
         # batch, attn_lyaer1_dim
-        h_tm1_att_trans = torch.mm(h_tm1, att_h_w1)
+        h_tm1_att_trans = torch.matmul(h_tm1, att_h_w1)
 
         att_hidden = context_att_trans+ h_tm1_att_trans[:, None, :]
         att_hidden = att_hidden.tanh()
 
-        att_raw = torch.mm(att_hidden, att_w2) + att_b2
+        att_raw = torch.matmul(att_hidden, att_w2) + att_b2
         # TODO necessary?
         att_raw = att_raw.view(att_raw.size()[0], att_raw.size()[1])
 
@@ -86,17 +86,16 @@ class CondAttLSTMAligner(CondAttLSTM):
         else:
             par_h = torch.zeros(h_tm1.size())
 
-        # parent hidden state to child
         if config.tree_attention:
-            i_t = self.inner_activation(xi_t + torch.mm(h_tm1 * b_u[0], u_i) + torch.mm(ctx_vec, c_i) + torch.mm(par_h, p_i) + torch.mm(h_ctx_vec, h_i))
-            f_t = self.inner_activation(xf_t + torch.mm(h_tm1 * b_u[1], u_f) + torch.mm(ctx_vec, c_f) + torch.mm(par_h, p_f) + torch.mm(h_ctx_vec, h_f))
-            c_t = f_t * c_tm1 + i_t * self.activation(xc_t + torch.mm(h_tm1 * b_u[2], u_c) + torch.mm(ctx_vec, c_c) + torch.mm(par_h, p_c) + torch.mm(h_ctx_vec, h_c))
-            o_t = self.inner_activation(xo_t + torch.mm(h_tm1 * b_u[3], u_o) + torch.mm(ctx_vec, c_o) + torch.mm(par_h, p_o) + torch.mm(h_ctx_vec, h_o))
+            i_t = self.inner_activation(xi_t + torch.matmul(h_tm1 * b_u[0], u_i) + torch.matmul(ctx_vec, c_i) + torch.matmul(par_h, p_i) + torch.matmul(h_ctx_vec, h_i))
+            f_t = self.inner_activation(xf_t + torch.matmul(h_tm1 * b_u[1], u_f) + torch.matmul(ctx_vec, c_f) + torch.matmul(par_h, p_f) + torch.matmul(h_ctx_vec, h_f))
+            c_t = f_t * c_tm1 + i_t * self.activation(xc_t + torch.matmul(h_tm1 * b_u[2], u_c) + torch.matmul(ctx_vec, c_c) + torch.matmul(par_h, p_c) + torch.matmul(h_ctx_vec, h_c))
+            o_t = self.inner_activation(xo_t + torch.matmul(h_tm1 * b_u[3], u_o) + torch.matmul(ctx_vec, c_o) + torch.matmul(par_h, p_o) + torch.matmul(h_ctx_vec, h_o))
         else:
-            i_t = self.inner_activation(xi_t + torch.mm(h_tm1 * b_u[0], u_i) + torch.mm(ctx_vec, c_i) + torch.mm(par_h, p_i))  # + T.dot(h_ctx_vec, h_i)
-            f_t = self.inner_activation(xf_t + torch.mm(h_tm1 * b_u[1], u_f) + torch.mm(ctx_vec, c_f) + torch.mm(par_h, p_f))  # + T.dot(h_ctx_vec, h_f)
-            c_t = f_t * c_tm1 + i_t * self.activation(xc_t + torch.mm(h_tm1 * b_u[2], u_c) + torch.mm(ctx_vec, c_c) + torch.mm(par_h, p_c))  # + T.dot(h_ctx_vec, h_c)
-            o_t = self.inner_activation(xo_t + torch.mm(h_tm1 * b_u[3], u_o) + torch.mm(ctx_vec, c_o) + torch.mm(par_h, p_o))  # + T.dot(h_ctx_vec, h_o)
+            i_t = self.inner_activation(xi_t + torch.matmul(h_tm1 * b_u[0], u_i) + torch.matmul(ctx_vec, c_i) + torch.matmul(par_h, p_i))
+            f_t = self.inner_activation(xf_t + torch.matmul(h_tm1 * b_u[1], u_f) + torch.matmul(ctx_vec, c_f) + torch.matmul(par_h, p_f))
+            c_t = f_t * c_tm1 + i_t * self.activation(xc_t + torch.matmul(h_tm1 * b_u[2], u_c) + torch.matmul(ctx_vec, c_c) + torch.matmul(par_h, p_c))
+            o_t = self.inner_activation(xo_t + torch.matmul(h_tm1 * b_u[3], u_o) + torch.matmul(ctx_vec, c_o) + torch.matmul(par_h, p_o))
         h_t = o_t * self.activation(c_t)
 
         h_t = (1 - mask_t) * h_tm1 + mask_t * h_t
@@ -111,36 +110,13 @@ class CondAttLSTMAligner(CondAttLSTM):
               mask=None, context_mask=None, srng=None, time_steps=None):
         assert context_mask.dtype == 'int8', 'context_mask is not int8, got %s' % context_mask.dtype
 
-        # timestep, batch
-        mask = self.get_mask(mask, x)
-
-        # timestep, batch, input_dim
         x = x.permute((1, 0, 2))
 
         B_w = torch.ones((4,))
         B_u = torch.ones((4,))
 
-        # timestep, batch, output_dim
-        xi = torch.mm(x * B_w[0], self.W_i) + self.b_i
-        xf = torch.mm(x * B_w[1], self.W_f) + self.b_f
-        xc = torch.mm(x * B_w[2], self.W_c) + self.b_c
-        xo = torch.mm(x * B_w[3], self.W_o) + self.b_o
-
         # (batch_size, context_size, att_layer1_dim)
-        context_att_trans = torch.mm(context, self.att_ctx_W1) + self.att_b1
-
-        # TODO test the broadcastable of the variable
-        if init_state:
-            # (batch_size, output_dim)
-            first_state = init_state
-        else:
-            first_state = torch.zeros(x.size()[1], self.output_dim)
-
-        if init_cell:
-            # (batch_size, output_dim)
-            first_cell = init_cell
-        else:
-            first_cell = torch.zeros(x.size()[1], self.output_dim)
+        context_att_trans = torch.matmul(context, self.att_ctx_W1) + self.att_b1
 
         if not hist_h:
             # (batch_size, n_timestep, output_dim)
@@ -152,25 +128,6 @@ class CondAttLSTMAligner(CondAttLSTM):
 
         # (n_timestep, batch_size)
         parent_t_seq = parent_t_seq.permute((1, 0))
-
-        # [outputs, cells, att_scores, hist_h_outputs], updates = theano.scan(
-        #     self._step_align,
-        #     sequences=[time_steps, xi, xf, xo, xc, mask, parent_t_seq],
-        #     outputs_info=[
-        #         first_state,  # for h
-        #         first_cell,  # for cell
-        #         None,
-        #         hist_h,  # for hist_h
-        #     ],
-        #     non_sequences=[
-        #         self.U_i, self.U_f, self.U_o, self.U_c,
-        #         self.C_i, self.C_f, self.C_o, self.C_c,
-        #         self.H_i, self.H_f, self.H_o, self.H_c,
-        #         self.P_i, self.P_f, self.P_o, self.P_c,
-        #         self.att_h_W1, self.att_W2, self.att_b2,
-        #         context, context_mask, context_att_trans,
-        #         B_u
-        #     ])
 
         for i in time_steps:
             outputs, cells, att_scores, hist_h_outputs = \
@@ -188,23 +145,28 @@ class CondAttLSTMAligner(CondAttLSTM):
 
 
 class RetrievalModel(Seq2Seq):
-    def __init__(self, regular_model=None):
+    def __init__(self, encoder, decoder, decoder_hidden_dim, rule_num, rule_embed_dim,
+                 node_num, node_embed_dim, target_vocab_size, max_query_length, head_nt_constraint,
+                 output_dim=2, dropout=0.2, frontier_node_type_feed=False, parent_action_feed=False,
+                 max_regular_model=None):
         """
         super(RetrievalModel, self).__init__()
         self.decoder_lstm = CondAttLSTMAligner(config.rule_embed_dim + config.node_embed_dim + config.rule_embed_dim,
                                                config.decoder_hidden_dim, config.encoder_hidden_dim, config.attention_hidden_dim,
                                                name='decoder_lstm')
         """
-        super(RetrievalModel, self).__init__()
+        super(RetrievalModel, self).__init__(encoder, decoder, decoder_hidden_dim, rule_num, rule_embed_dim,
+                 node_num, node_embed_dim, target_vocab_size, max_query_length, head_nt_constraint,
+                 output_dim=2, dropout=0.2, frontier_node_type_feed=False, parent_action_feed=False)
 
         self.decoder_lstm = CondAttLSTMAligner(config.rule_embed_dim + config.node_embed_dim + config.rule_embed_dim,
                                                config.decoder_hidden_dim, config.encoder_hidden_dim, config.attention_hidden_dim,
                                                name='decoder_lstm')
         # update params for new decoder
-        self.params = self.query_embedding.params + self.query_encoder_lstm.params + \
-            self.decoder_lstm.params + self.src_ptr_net.params + self.terminal_gen_softmax.params + \
-            [self.rule_embedding_W, self.rule_embedding_b, self.node_embedding, self.vocab_embedding_W, self.vocab_embedding_b] + \
-            self.decoder_hidden_state_W_rule.params + self.decoder_hidden_state_W_token.params
+        # self.params = self.query_embedding.params + self.query_encoder_lstm.params + \
+        #     self.decoder_lstm.params + self.src_ptr_net.params + self.terminal_gen_softmax.params + \
+        #     [self.rule_embedding_W, self.rule_embedding_b, self.node_embedding, self.vocab_embedding_W, self.vocab_embedding_b] + \
+        #     self.decoder_hidden_state_W_rule.params + self.decoder_hidden_state_W_token.params
 
     def build(self):
         super(RetrievalModel, self).build()
@@ -269,31 +231,26 @@ class RetrievalModel(Seq2Seq):
         # beam search decoding with ngram retrieval
         eos = terminal_vocab.eos
         unk = terminal_vocab.unk
-        vocab_embedding = self.vocab_embedding_W.get_value(borrow=True)
-        rule_embedding = self.rule_embedding_W.get_value(borrow=True)
+        vocab_embedding = self.vocab_embedding_W
+        rule_embedding = self.rule_embedding_W
 
         query_tokens = example.data[0]
-        query_embed, query_token_embed_mask = self.decoder_func_init(query_tokens)
+        self.init_query(torch.from_numpy(query_tokens).long())
         completed_hyps = []
         completed_hyp_num = 0
         live_hyp_num = 1
 
         root_hyp = Hyp_ng(grammar)
-        root_hyp.state = np.zeros(config.decoder_hidden_dim).astype('float32')
-        root_hyp.cell = np.zeros(config.decoder_hidden_dim).astype('float32')
-        root_hyp.action_embed = np.zeros(config.rule_embed_dim).astype('float32')
+        root_hyp.state = torch.zeros(self.decoder.hidden_dim)
+        root_hyp.cell = torch.zeros(self.decoder.hidden_dim)
+        root_hyp.action_embed = torch.zeros(self.rule_embed_dim)
         root_hyp.node_id = grammar.get_node_type_id(root_hyp.tree.type)
         root_hyp.parent_rule_id = -1
 
-        hyp_samples = [root_hyp]  # [list() for i in range(live_hyp_num)]
-
-        # source word id in the terminal vocab
+        hyp_samples = [root_hyp]
         src_token_id = [terminal_vocab[t] for t in example.query][:config.max_query_length]
         unk_pos_list = [x for x, t in enumerate(src_token_id) if t == unk]
 
-        # sometimes a word may appear multi-times in the source, in this case,
-        # we just copy its first appearing position. Therefore we mask the words
-        # appearing second and onwards to -1
         token_set = set()
         for i, tid in enumerate(src_token_id):
             if tid in token_set:
@@ -303,42 +260,34 @@ class RetrievalModel(Seq2Seq):
 
         for t in xrange(max_time_step):
             hyp_num = len(hyp_samples)
-            decoder_prev_state = np.array([hyp.state for hyp in hyp_samples]).astype('float32')
-            decoder_prev_cell = np.array([hyp.cell for hyp in hyp_samples]).astype('float32')
-            hist_h = np.zeros((hyp_num, max_time_step, config.decoder_hidden_dim)).astype('float32')
+            decoder_prev_state = torch.stack([hyp.state for hyp in hyp_samples])
+            decoder_prev_cell = torch.stack([hyp.cell for hyp in hyp_samples])
+            hist_h = torch.zeros((hyp_num, max_time_step, self.decoder.hidden_dim))
 
             if t > 0:
                 for i, hyp in enumerate(hyp_samples):
-                    hist_h[i, :len(hyp.hist_h), :] = hyp.hist_h
+                    hist_h[i, :len(hyp.hist_h), :] = torch.stack(hyp.hist_h)
 
-            prev_action_embed = np.array(
-                [hyp.action_embed for hyp in hyp_samples]).astype('float32')
-            node_id = np.array([hyp.node_id for hyp in hyp_samples], dtype='int32')
-            parent_rule_id = np.array([hyp.parent_rule_id for hyp in hyp_samples], dtype='int32')
-            parent_t = np.array([hyp.get_action_parent_t() for hyp in hyp_samples], dtype='int32')
-            query_embed_tiled = np.tile(query_embed, [live_hyp_num, 1, 1])
-            query_token_embed_mask_tiled = np.tile(query_token_embed_mask, [live_hyp_num, 1])
 
-            inputs = [np.array([t], dtype='int32'), decoder_prev_state, decoder_prev_cell, hist_h,
-                      prev_action_embed,
+            prev_action_embed = torch.stack([torch.tensor(hyp.action_embed, dtype=torch.long) for hyp in hyp_samples])
+            node_id = torch.LongTensor([hyp.node_id for hyp in hyp_samples])
+            parent_rule_id = torch.LongTensor([hyp.parent_rule_id for hyp in hyp_samples])
+            parent_t = torch.LongTensor([hyp.get_action_parent_t() for hyp in hyp_samples]).unsqueeze(0)
+            query_embed_tiled = self.query_embed.repeat(live_hyp_num, 1, 1)
+            query_token_embed_mask_tiled = self.query_token_embed_mask.repeat(live_hyp_num, 1)
+
+            inputs = [t, decoder_prev_state, decoder_prev_cell, hist_h, prev_action_embed,
                       node_id, parent_rule_id, parent_t,
                       query_embed_tiled, query_token_embed_mask_tiled]
 
-            decoder_next_state, decoder_next_cell, \
-            rule_prob, gen_action_prob, vocab_prob, copy_prob = self.decoder_func_next_step(
-                *inputs)
-
-            rule_prob, vocab_prob, copy_prob = update_probs(
-                rule_prob, vocab_prob, copy_prob, hyp_samples, ngram_searcher, grammar=grammar)
+            decoder_next_state, decoder_next_cell, rule_prob, gen_action_prob, vocab_prob, copy_prob = self.next_step(*inputs)
+            rule_prob, vocab_prob, copy_prob = update_probs(rule_prob, vocab_prob, copy_prob, hyp_samples, ngram_searcher, grammar=grammar)
 
             new_hyp_samples = []
-            cut_off_k = beam_size
-            score_heap = []
-
             word_prob = gen_action_prob[:, 0:1] * vocab_prob
             word_prob[:, unk] = 0
 
-            hyp_scores = np.array([hyp.score for hyp in hyp_samples])
+            hyp_scores = torch.Tensor([hyp.score for hyp in hyp_samples])
 
             rule_apply_cand_hyp_ids = []
             rule_apply_cand_scores = []
@@ -356,17 +305,13 @@ class RetrievalModel(Seq2Seq):
                 frontier_nt = hyp.frontier_nt()
                 hyp_frontier_nts.append(frontier_nt)
 
-                assert hyp, 'none hyp!'
-
-                # if it's not a leaf
                 if not grammar.is_value_node(frontier_nt):
-                    # iterate over all the possible rules
                     rules = grammar[frontier_nt.as_type_node] if config.head_nt_constraint else grammar
                     assert len(rules) > 0, 'fail to expand nt node %s' % frontier_nt
                     for rule in rules:
                         rule_id = grammar.rule_to_id[rule]
 
-                        cur_rule_score = np.log(rule_prob[k, rule_id])
+                        cur_rule_score = torch.log(rule_prob[k, rule_id])
                         new_hyp_score = hyp.score + cur_rule_score
 
                         rule_apply_cand_hyp_ids.append(k)
@@ -374,14 +319,13 @@ class RetrievalModel(Seq2Seq):
                         rule_apply_cand_rules.append(rule)
                         rule_apply_cand_rule_ids.append(rule_id)
 
-                else:  # it's a leaf that holds values
+                else:
                     cand_copy_prob = 0.0
                     for i, tid in enumerate(src_token_id):
                         if tid != -1:
                             word_prob[k, tid] += gen_action_prob[k, 1] * copy_prob[k, i]
                             cand_copy_prob = gen_action_prob[k, 1]
 
-                    # and unk copy probability
                     if len(unk_pos_list) > 0:
                         unk_pos = copy_prob[k, unk_pos_list].argmax()
                         unk_pos = unk_pos_list[unk_pos]
@@ -394,11 +338,10 @@ class RetrievalModel(Seq2Seq):
                     word_gen_hyp_ids.append(k)
                     cand_copy_probs.append(cand_copy_prob)
 
-            # prune the hyp space
             if completed_hyp_num >= beam_size:
                 break
 
-            word_prob = np.log(word_prob)
+            word_prob = torch.log(word_prob)
 
             word_gen_hyp_num = len(word_gen_hyp_ids)
             rule_apply_cand_num = len(rule_apply_cand_scores)
@@ -408,18 +351,14 @@ class RetrievalModel(Seq2Seq):
                                                   None] + word_prob[word_gen_hyp_ids, :]
                 word_gen_cand_scores_flat = word_gen_cand_scores.flatten()
 
-                cand_scores = np.concatenate([rule_apply_cand_scores, word_gen_cand_scores_flat])
+                cand_scores = torch.cat((torch.tensor(rule_apply_cand_scores), word_gen_cand_scores_flat))
             else:
-                cand_scores = np.array(rule_apply_cand_scores)
+                cand_scores = torch.tensor(rule_apply_cand_scores)
 
             top_cand_ids = (-cand_scores).argsort()[:beam_size - completed_hyp_num]
 
-            # expand_cand_num = 0
             for k, cand_id in enumerate(top_cand_ids):
-                # cand is rule application
-                # verbose = k==0
                 verbose = False
-                new_hyp = None
                 if cand_id < rule_apply_cand_num:
                     hyp_id = rule_apply_cand_hyp_ids[cand_id]
                     hyp = hyp_samples[hyp_id]
@@ -439,6 +378,7 @@ class RetrievalModel(Seq2Seq):
                     new_hyp.action_embed = rule_embedding[rule_id]
                 else:
                     tid = (cand_id - rule_apply_cand_num) % word_prob.shape[1]
+                    tid = tid.tolist()
                     word_gen_hyp_id = (cand_id - rule_apply_cand_num) / word_prob.shape[1]
                     hyp_id = word_gen_hyp_ids[word_gen_hyp_id]
 
@@ -464,7 +404,6 @@ class RetrievalModel(Seq2Seq):
                         new_hyp.update_ngrams(ngram_searcher.get_keys(
                             hyp.get_ngrams(), tid, "GEN_TOKEN", verbose))
 
-                    # look at parent timestep ?
                     if tid == eos:
                         new_hyp.to_move = True
                     else:
@@ -484,10 +423,8 @@ class RetrievalModel(Seq2Seq):
                     new_hyp.action_embed = vocab_embedding[tid]
                     new_hyp.node_id = grammar.get_node_type_id(frontier_nt)
 
-                # get the new frontier nt after rule application
                 new_frontier_nt = new_hyp.frontier_nt()
 
-                # if new_frontier_nt is None, then we have a new completed hyp!
                 if new_frontier_nt is None:
 
                     new_hyp.n_timestep = t + 1
@@ -499,7 +436,6 @@ class RetrievalModel(Seq2Seq):
                     new_hyp.parent_rule_id = grammar.rule_to_id[new_frontier_nt.parent.applied_rule]
                     new_hyp_samples.append(new_hyp)
 
-                # cand is word generation
             live_hyp_num = min(len(new_hyp_samples), beam_size - completed_hyp_num)
             if live_hyp_num < 1:
                 break
@@ -525,7 +461,6 @@ class Hyp_ng(Hyp):
         self.hist_ng.append(new_ngram)
 
     def get_ngrams(self, verbose=False):
-
         try:
             if self.to_move:
                 t = self.get_action_parent_t()
@@ -540,39 +475,30 @@ class Hyp_ng(Hyp):
                 print self.tree.pretty_print()
             return k
         except:
-            return [None for i in range(config.max_ngrams + 1)]
+            return [None for _ in range(config.max_ngrams + 1)]
 
 
 def update_probs(rule_prob, vocab_prob, copy_prob, hyp_samples, ngram_searcher, grammar=None):
     f = config.retrieval_factor
-    # print f, type(f)
 
     for k, hyp in enumerate(hyp_samples):
         verbose = False
-        # if k == 0:
-        #     verbose = True
         ngram_keys = hyp.get_ngrams(verbose)
-        # if k == 0:
-        #    print ngram_keys
         for value, score, flag in ngram_searcher(ngram_keys):
 
             if flag == "APPLY_RULE":
-                # if grammar is not None and k == 0:
-                #     print "candidate rule :"
-                #     print grammar.rules[value]
-                rule_prob[k, value] *= np.exp(f * score)
+                 rule_prob[k, value] = torch.mul(rule_prob[k, value], torch.exp(torch.tensor(f * score)))
 
-                # print("---- apply rule here ----")
             elif flag == "GEN_TOKEN":
-                vocab_prob[k, value] *= np.exp(f * score)
+                vocab_prob[k, value] = torch.mul(vocab_prob[k, value], torch.exp(torch.tensor(f * score)))
 
             else:
                 assert flag == "COPY_TOKEN"
                 if value < config.max_query_length:
-                    copy_prob[k, value] *= np.exp(f * score)
+                    copy_prob[k, value] = torch.mul(copy_prob[k, value], torch.exp(torch.tensor(f * score)))
 
-        rule_prob[k] /= rule_prob[k].sum()
-        vocab_prob[k] /= vocab_prob[k].sum()
-        copy_prob[k] /= copy_prob[k].sum()
+        rule_prob[k] = torch.div(rule_prob[k], torch.sum(rule_prob[k]))
+        vocab_prob[k] = torch.div(vocab_prob[k], torch.sum(vocab_prob[k]))
+        copy_prob[k] = torch.div(copy_prob[k], torch.sum(copy_prob[k]))
 
     return rule_prob, vocab_prob, copy_prob

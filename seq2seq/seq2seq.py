@@ -4,9 +4,7 @@ import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 
-from collections import OrderedDict
 from util import get_mask, tensor_right_shift
 from components import Hyp, PointerNet
 
@@ -32,11 +30,11 @@ class Seq2Seq(nn.Module):
         # self.srng = RandomStreams()
 
         # random initialize embeddings as normal distribution
-        self.rule_embedding_W = torch.randn(rule_num, rule_embed_dim) * 0.1
-        self.rule_embedding_b = torch.zeros(rule_num)
-        self.node_embedding = torch.randn(node_num, node_embed_dim)
-        self.vocab_embedding_W = torch.randn(target_vocab_size, rule_embed_dim)
-        self.vocab_embedding_b = torch.zeros(target_vocab_size)
+        self.rule_embedding_W = nn.Parameter(torch.randn(rule_num, rule_embed_dim) * 0.1)
+        self.rule_embedding_b = nn.Parameter(torch.zeros(rule_num))
+        self.node_embedding = nn.Parameter(torch.randn(node_num, node_embed_dim))
+        self.vocab_embedding_W = nn.Parameter(torch.randn(target_vocab_size, rule_embed_dim))
+        self.vocab_embedding_b = nn.Parameter(torch.zeros(target_vocab_size))
 
         self.query_tokens = None
         self.query_token_embed = None
@@ -51,14 +49,13 @@ class Seq2Seq(nn.Module):
         # generate softmax output
         self.fc = nn.Linear(decoder_hidden_dim, output_dim)
 
-        # TODO: what is PointerNet()?
-        # might be: score calculator
+        # calculate loss
         self.src_ptr_net = PointerNet()
 
-    def forward(self, inputs):
-        raise NotImplemented
+    # def forward(self, inputs):
+    #     raise NotImplemented
 
-    def encode(self, query_tokens, tgt_action_seq, tgt_action_seq_type, tgt_node_seq, tgt_par_rule_seq, tgt_par_t_seq):
+    def forward(self, query_tokens, tgt_action_seq, tgt_action_seq_type, tgt_node_seq, tgt_par_rule_seq, tgt_par_t_seq):
         self.query_tokens = query_tokens
 
         query_tokens = torch.LongTensor(query_tokens)
@@ -103,15 +100,13 @@ class Seq2Seq(nn.Module):
             [decoder_input, self.query_embed, self.query_token_embed_mask, tgt_action_seq_mask, tgt_par_t_seq])
 
         # (batch_size, max_example_action_num, rule_num)
-        # TODO: use dot or matmul?
         rule_predict = F.softmax(torch.matmul(decoder_hidden_state_trans_rule,
-                                               torch.t(self.rule_embedding_W)) + self.rule_embedding_b)
+                                              torch.t(self.rule_embedding_W)) + self.rule_embedding_b)
 
         # (batch_size, max_example_action_num, 2)
         terminal_gen_action_prob = F.softmax(self.fc(self.decoder.hidden))
 
         # (batch_size, max_example_action_num, target_vocab_size)
-        # TODO: use dot or matmul?
         vocab_predict = F.softmax(torch.matmul(decoder_hidden_state_trans_token, torch.t(
             self.vocab_embedding_W)) + self.vocab_embedding_b)
 
@@ -134,12 +129,16 @@ class Seq2Seq(nn.Module):
         tgt_action_seq_type = tgt_action_seq_type.float()
         self.tgt_prob = tgt_action_seq_type[:, :, 0] * rule_tgt_prob + \
                         tgt_action_seq_type[:, :, 1] * terminal_gen_action_prob[:, :, 0] * vocab_tgt_prob + \
-                        tgt_action_seq_type[:, :, 2] * terminal_gen_action_prob[:, :, 1] * copy_tgt_prob
+                        tgt_action_seq_type[:, :, 2] * terminal_gen_action_prob[:, :, 1] * copy_tgt_prob + 1e-8
 
         tgt_action_seq_mask = tgt_action_seq_mask.float()
+        # print("tgt_prob stats, {}, {}".format(self.tgt_prob.max().item(), self.tgt_prob.min().item()))
         likelihood = torch.log(self.tgt_prob + 1.e-7 * (1. - tgt_action_seq_mask))
+        # print("likelihood stats, {}, {}".format(likelihood.max().item(), likelihood.min().item()))
         # / tgt_action_seq_mask.sum(axis=-1)
         loss = - (likelihood * tgt_action_seq_mask).sum(dim=-1)
+        # print(loss.max(), loss.min())
+        # loss[loss == float("Inf")] = 0.0
         loss = loss.mean()
 
         # if loss == float('inf'):
@@ -440,47 +439,4 @@ class Seq2Seq(nn.Module):
 
         return self.completed_hyps
 
-    @property
-    def params_name_to_id(self):
-        name_to_id = dict()
-        for i, p in enumerate(self.params):
-            assert p.name is not None
-            # print 'parameter [%s]' % p.name
 
-            name_to_id[p.name] = i
-
-        return name_to_id
-
-    @property
-    def params_dict(self):
-        assert len(set(p.name for p in self.params)) == len(self.params), 'param name clashes!'
-        return OrderedDict((p.name, p) for p in self.params)
-
-    def pull_params(self):
-        return OrderedDict([(p_name, p) for (p_name, p) in self.params_dict.iteritems()])
-
-    def save(self, model_file, **kwargs):
-        logging.info('save model to [%s]', model_file)
-
-        weights_dict = self.pull_params()
-        for k, v in kwargs.iteritems():
-            weights_dict[k] = v
-
-        np.savez(model_file, **weights_dict)
-
-    def load(self, model_file):
-        logging.info('load model from [%s]', model_file)
-        weights_dict = np.load(model_file)
-
-        # assert len(weights_dict.files) == len(self.params_dict)
-
-        for p_name, p in self.params_dict.iteritems():
-            if p_name not in weights_dict:
-                raise RuntimeError('parameter [%s] not in saved weights file', p_name)
-            else:
-                logging.info('loading parameter [%s]', p_name)
-                assert np.array_equal(p.shape.eval(), weights_dict[p_name].shape), \
-                    'shape mis-match for [%s]!, %s != %s' % (p_name,
-                                                             p.shape.eval(), weights_dict[p_name].shape)
-
-                p.set_value(weights_dict[p_name])

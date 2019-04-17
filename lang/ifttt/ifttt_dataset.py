@@ -98,7 +98,6 @@ def get_grammar(parse_trees):
 
     for parse_tree in parse_trees:
         parse_tree_rules, rule_parents = parse_tree.get_productions()
-        # TODO: for loop?
         for rule in parse_tree_rules:
             rules.add(rule)
 

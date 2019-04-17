@@ -10,10 +10,6 @@ from lang.py.grammar import is_compositional_leaf, PY_AST_NODE_FIELDS, NODE_FIEL
 from lang.util import escape
 from lang.util import typename
 
-import pdb
-
-ERROR_NUM = -1
-
 
 def python_ast_to_parse_tree(node):
     assert isinstance(node, ast.AST)
@@ -87,9 +83,7 @@ def parse_tree_to_python_ast(tree):
         return parse_tree_to_python_ast(tree.children[0])
 
     ast_node = node_type()
-
-    # TODO NOTE wrapping typeename(node_type) right here
-    node_type_name = parse_typename(typename(node_type))
+    node_type_name = typename(node_type)
 
     # if it's a compositional AST node, populate its children nodes,
     # fill fields with empty(default) values otherwise
@@ -136,23 +130,12 @@ def parse_tree_to_python_ast(tree):
 
             setattr(ast_node, field_label, field_value)
 
-    # TODO what is fields_info here?
-    else:
-        fields_info = False
-
-
     for field in ast_node._fields:
         if not hasattr(ast_node, field) and not field in NODE_FIELD_BLACK_LIST:
             if fields_info and fields_info[field]['is_list'] and not fields_info[field]['is_optional']:
                 setattr(ast_node, field, list())
             else:
                 setattr(ast_node, field, None)
-
-    # try:
-    #     if ast_node is None or len(as_node) == 0:
-    #         pdb.set_trace()
-    # except:
-    #     pdb.set_trace()
 
     return ast_node
 
@@ -166,35 +149,16 @@ def decode_tree_to_python_ast(decode_tree):
 
     for terminal in terminals:
         if terminal.value is not None and type(terminal.value) is str:
-
-            # Take the last 5 values
             if terminal.value.endswith('<eos>'):
                 terminal.value = terminal.value[:-5]
 
         if terminal.type in {int, float, str, bool}:
             # cast to target data type
-            try:
-                terminal.value = terminal.type(terminal.value)
-            except:
-                # Wrong terminal.type inable to cast
-                print 'Wrong decoding %s' % terminal
-
-                # can't pass, o/w cannot convert to source code
-                # method 1 change the type
-                # terminal.type = type(terminal.value)
-
-                # method 2 predetermine
-                # if terminals[-1].value.endswith('<eos>'):
-                #     terminal = terminals[-1]
-                #     terminal.value = terminal.value[:-5]
-                #     break
-
-                # method 3 error number
-                terminal.value = terminal.type(ERROR_NUM)
+            terminal.value = terminal.type(terminal.value)
 
     ast_tree = parse_tree_to_python_ast(decode_tree)
-    return ast_tree
 
+    return ast_tree
 
 
 p_elif = re.compile(r'^elif\s?')
@@ -376,8 +340,6 @@ def tokenize_code_adv(code, breakCamelStr=False):
 
     return tokens
 
-def parse_typename(typename):
-    return typename.split()[-1].replace(">", "").replace("\'", "").split(".")[-1]
 
 if __name__ == '__main__':
     from nn.utils.generic_utils import init_logging
